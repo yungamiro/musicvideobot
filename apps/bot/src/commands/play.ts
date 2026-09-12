@@ -14,9 +14,9 @@ export const playCommand: BotCommand = {
     .addStringOption((option) =>
       option
         .setName("query")
-        .setDescription("Song name or YouTube URL")
+        .setDescription("Song name, YouTube URL, or Spotify URL")
         .setRequired(true)
-        .setMaxLength(200)
+        .setMaxLength(300)
     ),
 
   async execute(interaction) {
