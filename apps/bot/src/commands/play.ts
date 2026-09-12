@@ -1,24 +1,24 @@
-import { randomUUID } from "node:crypto";
-import { GuildMember, MessageFlags, SlashCommandBuilder } from "discord.js";
-import { updatePlayback } from "../services/api.js";
+import {
+  GuildMember,
+  MessageFlags,
+  SlashCommandBuilder,
+  type GuildTextBasedChannel
+} from "discord.js";
+import { getMusic } from "../services/music.js";
 import type { BotCommand } from "../types.js";
-
-function parseMediaUrl(value: string): string | null {
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" ? url.toString() : null;
-  } catch {
-    return null;
-  }
-}
 
 export const playCommand: BotCommand = {
   data: new SlashCommandBuilder()
     .setName("play")
-    .setDescription("Play a direct media URL in the synchronized Activity")
-    .addStringOption((option) => option.setName("audio").setDescription("Direct HTTPS audio URL").setRequired(true))
-    .addStringOption((option) => option.setName("video").setDescription("Optional direct HTTPS video URL").setRequired(false))
-    .addStringOption((option) => option.setName("title").setDescription("Track title").setRequired(false).setMaxLength(100)),
+    .setDescription("Play a song in your voice channel")
+    .addStringOption((option) =>
+      option
+        .setName("query")
+        .setDescription("Song name or YouTube URL")
+        .setRequired(true)
+        .setMaxLength(200)
+    ),
+
   async execute(interaction) {
     if (!interaction.inCachedGuild()) {
       await interaction.reply({ content: "This command only works inside a server.", flags: MessageFlags.Ephemeral });
@@ -26,42 +26,33 @@ export const playCommand: BotCommand = {
     }
 
     const member = interaction.member as GuildMember;
-    const channel = member.voice.channel;
-    if (!channel) {
+    const voiceChannel = member.voice.channel;
+    if (!voiceChannel) {
       await interaction.reply({ content: "Join a voice channel first.", flags: MessageFlags.Ephemeral });
       return;
     }
 
-    const audioInput = interaction.options.getString("audio", true);
-    const videoInput = interaction.options.getString("video");
-    const audioUrl = parseMediaUrl(audioInput);
-    const videoUrl = videoInput ? parseMediaUrl(videoInput) : undefined;
+    const query = interaction.options.getString("query", true).trim();
+    const textChannel = interaction.channel?.isTextBased()
+      ? (interaction.channel as GuildTextBasedChannel)
+      : undefined;
 
-    if (!audioUrl || (videoInput && !videoUrl)) {
-      await interaction.reply({ content: "For now, media URLs must be direct HTTPS URLs.", flags: MessageFlags.Ephemeral });
-      return;
-    }
-
-    const roomId = `${interaction.guildId}:${channel.id}`;
-    const title = interaction.options.getString("title") ?? "Untitled track";
-    await interaction.deferReply();
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     try {
-      await updatePlayback(roomId, {
-        status: "playing",
-        positionMs: 0,
-        track: {
-          id: randomUUID(),
-          title,
-          audioUrl,
-          ...(videoUrl ? { videoUrl } : {}),
-          requestedBy: interaction.user.username
+      await getMusic().play(voiceChannel, query, {
+        member,
+        textChannel,
+        metadata: {
+          requestedById: interaction.user.id,
+          requestedByName: interaction.user.username
         }
       });
-      await interaction.editReply(`▶️ **${title}** is now synced to the Activity in **${channel.name}**${videoUrl ? " with video." : "."}`);
+      await interaction.editReply(`🎵 Added **${query}** to the music player.`);
     } catch (error) {
-      console.error(error);
-      await interaction.editReply("The playback API is unreachable. Make sure `npm run dev:api` is running.");
+      console.error("/play failed", error);
+      const message = error instanceof Error ? error.message : "Unknown playback error";
+      await interaction.editReply(`I couldn't play that track: ${message}`);
     }
   }
 };
