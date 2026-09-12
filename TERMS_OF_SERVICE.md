@@ -16,7 +16,7 @@ You must meet Discord's minimum age requirements for your country and comply wit
 
 MusicVideoBot provides Discord commands and synchronized playback of user-supplied media through an Activity. Features are under development and may change or be unavailable. The current version uses direct HTTPS media URLs; the service does not grant access to a licensed music catalog or guarantee that a particular URL will play.
 
-Playback state is temporary and is not a backup service. Retention and the current limits of disconnect cleanup are described in the [Privacy Policy](PRIVACY_POLICY.md).
+Playback state is temporary and is not a backup service. Retention and room cleanup behavior are described in the [Privacy Policy](PRIVACY_POLICY.md).
 
 ## 3. Acceptable use
 
