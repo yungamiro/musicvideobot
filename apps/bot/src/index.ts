@@ -1,4 +1,4 @@
-import { Client, Events, GatewayIntentBits } from "discord.js";
+import { Client, Events, GatewayIntentBits, MessageFlags } from "discord.js";
 import { commandMap } from "./commands/index.js";
 import { config } from "./config.js";
 import { clearRoom } from "./services/api.js";
@@ -19,7 +19,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     await command.execute(interaction);
   } catch (error) {
     console.error(`Command /${interaction.commandName} failed`, error);
-    const message = { content: "Something went wrong while running that command.", ephemeral: true } as const;
+    const message = { content: "Something went wrong while running that command.", flags: MessageFlags.Ephemeral } as const;
     if (interaction.replied || interaction.deferred) {
       await interaction.followUp(message).catch(() => undefined);
     } else {
