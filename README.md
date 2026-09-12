@@ -7,22 +7,24 @@ Current Discord Application / Client ID: `1548297625671962629`.
 ## Current behavior
 
 ```text
-/play query:<song name or YouTube URL>
+/play query:<song name, YouTube URL, or Spotify URL>
         ↓
 Bot joins the requester's voice channel
         ↓
-Searches/resolves the track
+Searches/resolves the track or Spotify metadata
         ↓
-Plays audio in Discord voice
+Plays the matched audio source in Discord voice
         ↓
 Posts a Now Playing embed + Watch clip link in text
 ```
+
+Spotify track, album, playlist, and artist URLs are supported through the DisTube Spotify plugin. Spotify is used as a metadata/source request; the bot does not stream Spotify's protected audio directly. The plugin resolves the Spotify item and matches it to a playable source such as YouTube for voice playback.
 
 When the resolved source is YouTube, the bot also keeps the YouTube URL in the Now Playing message so Discord can render its native video preview when embeds are allowed in that channel.
 
 ## Commands
 
-- `/play query:<song or URL>` — search and play, or add to the queue
+- `/play query:<song or URL>` — search and play, or add to the queue; accepts song names, YouTube URLs, and Spotify URLs
 - `/pause` — pause playback
 - `/resume` — resume playback
 - `/skip` — skip the current song
@@ -42,7 +44,7 @@ Queues are isolated per Discord server. Leaving/disconnecting is a queue-cleanup
 - A Discord application with a bot token
 - Discord permissions to View Channels, Send Messages, Embed Links, Connect, and Speak
 
-The playback stack uses `discord.js`, `@discordjs/voice`, DisTube, the DisTube YouTube extractor, Opus, and a bundled FFmpeg binary.
+The playback stack uses `discord.js`, `@discordjs/voice`, DisTube, the DisTube YouTube and Spotify extractors, Opus, and a bundled FFmpeg binary.
 
 ## Setup
 
@@ -58,7 +60,7 @@ Copy the environment template if you do not already have a local `.env`:
 Copy-Item .env.example .env
 ```
 
-Only these values are required by the bot:
+Required values:
 
 ```env
 DISCORD_TOKEN=YOUR_BOT_TOKEN
@@ -66,9 +68,18 @@ DISCORD_CLIENT_ID=1548297625671962629
 DISCORD_GUILD_ID=911958598995808326
 ```
 
+Optional Spotify API credentials can be added for more reliable Spotify metadata access:
+
+```env
+SPOTIFY_CLIENT_ID=
+SPOTIFY_CLIENT_SECRET=
+```
+
+If you use Spotify credentials, set both values. The plugin can also operate without them.
+
 `DISCORD_GUILD_ID` is only used for fast development command registration. It does not restrict the running bot to that server.
 
-Never commit `.env` or paste the bot token into chat/issues.
+Never commit `.env` or paste bot/API secrets into chat or issues.
 
 ## Register commands
 
@@ -92,10 +103,12 @@ Only the bot process is required:
 npm run dev:bot
 ```
 
-Then join a voice channel and try:
+Then join a voice channel and try either:
 
 ```text
 /play query: The Weeknd Blinding Lights
+/play query: https://open.spotify.com/track/...
+/play query: https://open.spotify.com/playlist/...
 ```
 
 The bot should join automatically, play the resolved track in voice, and post the Now Playing/clip message in the text channel where `/play` was used.
@@ -114,6 +127,5 @@ The repository still contains the earlier `apps/activity`, `apps/api`, and share
 
 - Improve source/provider fallbacks when YouTube blocks or rate-limits a resolver.
 - Add loop, shuffle, previous, seek, and volume commands.
-- Add Spotify/Apple Music metadata resolution with audio-source fallback.
-- Improve official music-video matching instead of always using the resolved playback video.
+- Improve official music-video matching, especially when a Spotify request resolves to a non-official upload.
 - Add persistent settings while keeping queues ephemeral by default.
