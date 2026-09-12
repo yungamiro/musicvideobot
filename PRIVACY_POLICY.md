@@ -8,7 +8,7 @@ Last updated: 12 September 2026
 
 ## Scope
 
-This policy covers MusicVideoBot's Discord bot and synchronized audio/video Activity as currently implemented in this repository. It replaces the earlier proposed policy based on planned queue behavior.
+This policy covers MusicVideoBot's Discord bot and synchronized audio/video Activity as currently implemented in this repository.
 
 ## Information processed and why
 
@@ -24,9 +24,9 @@ The current application has no persistent user-profile or listening-history data
 
 Playback state is held in the API process's memory, without database or disk persistence in the application code.
 
-A successful `/stop` clears the current track, including its media URLs and requester name. Starting another track replaces the previous track. The room identifier and stopped playback metadata can remain in memory until the API process stops or restarts.
+A successful `/stop` clears the current track, including its media URLs and requester name. Starting another track replaces the previous track. The room identifier and stopped playback metadata can remain in memory until the room is deleted or the API process stops or restarts.
 
-**Disconnecting the bot, running `/leave`, or closing the Activity does not currently guarantee deletion of playback state.** Automatic cleanup on disconnect is a planned behavior, not a feature of the current version.
+When the bot leaves a voice channel through `/leave`, is moved to another voice channel, or Discord reports that the bot has left the channel, the application deletes that room's in-memory state. This clears the current playback state and is also the cleanup boundary intended for future per-room queue data. Closing the Activity by itself does not delete the room state while the bot remains connected.
 
 Console-log retention depends on the deployment environment; the application does not currently enforce a timed log-deletion schedule. Support correspondence is handled separately from playback state. Contact the operator about retention or deletion of logs or correspondence associated with you.
 
@@ -42,7 +42,7 @@ GitHub hosts this repository and may host the policy pages under its [Privacy St
 
 ## Your choices and requests
 
-You can stop using the Activity, remove the bot from a server you manage, and revoke the Activity's authorization in Discord. Use `/stop` in the relevant voice channel to clear the active track.
+You can stop using the Activity, remove the bot from a server you manage, and revoke the Activity's authorization in Discord. Use `/stop` in the relevant voice channel to clear the active track, or disconnect the bot to delete that room's in-memory state.
 
 Email [nobumeqt@outlook.com](mailto:nobumeqt@outlook.com) to ask about your information or request access, correction, or deletion. Provide only enough information to identify the relevant session or correspondence. Never send passwords, bot tokens, or OAuth tokens. Some temporary information may already have been erased. Depending on applicable law, you may also have rights to restrict or object to processing, obtain a portable copy, or complain to a data-protection authority.
 
