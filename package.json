@@ -9,6 +9,7 @@
     "dev:api": "npm run dev -w @musicvideobot/api",
     "dev:activity": "npm run dev -w @musicvideobot/activity",
     "deploy:commands": "npm run deploy:commands -w @musicvideobot/bot",
+    "deploy:commands:global": "npm run deploy:commands:global -w @musicvideobot/bot",
     "build": "npm run build -w @musicvideobot/bot && npm run build -w @musicvideobot/api && npm run build -w @musicvideobot/activity",
     "typecheck": "npm run typecheck -w @musicvideobot/bot && npm run typecheck -w @musicvideobot/api && npm run typecheck -w @musicvideobot/activity"
   },
