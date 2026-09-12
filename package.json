@@ -3,7 +3,10 @@
   "private": true,
   "version": "0.1.0",
   "description": "Discord music bot + synchronized Activity player",
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev:bot": "npm run dev -w @musicvideobot/bot",
     "dev:api": "npm run dev -w @musicvideobot/api",
@@ -13,5 +16,10 @@
     "build": "npm run build -w @musicvideobot/bot && npm run build -w @musicvideobot/api && npm run build -w @musicvideobot/activity",
     "typecheck": "npm run typecheck -w @musicvideobot/bot && npm run typecheck -w @musicvideobot/api && npm run typecheck -w @musicvideobot/activity"
   },
-  "engines": {"node": ">=22.12.0"}
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
 }
