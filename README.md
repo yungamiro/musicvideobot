@@ -18,7 +18,7 @@ Plays the matched audio source in Discord voice
 Posts a Now Playing embed + Watch clip link in text
 ```
 
-Spotify track, album, playlist, and artist URLs are supported through the DisTube Spotify plugin. Spotify is used as a metadata/source request; the bot does not stream Spotify's protected audio directly. The plugin resolves the Spotify item and matches it to a playable source such as YouTube for voice playback.
+Spotify track, album, playlist, and artist URLs are resolved through Spotify's Web API. Spotify supplies metadata only; the bot does not stream Spotify's protected audio directly. The resolved artist/title is matched to a playable source such as YouTube for Discord voice playback.
 
 When the resolved source is YouTube, the bot also keeps the YouTube URL in the Now Playing message so Discord can render its native video preview when embeds are allowed in that channel.
 
@@ -44,7 +44,7 @@ Queues are isolated per Discord server. Leaving/disconnecting is a queue-cleanup
 - A Discord application with a bot token
 - Discord permissions to View Channels, Send Messages, Embed Links, Connect, and Speak
 
-The playback stack uses `discord.js`, `@discordjs/voice`, DisTube, the DisTube YouTube and Spotify extractors, Opus, and a bundled FFmpeg binary.
+The playback stack uses `discord.js`, `@discordjs/voice`, DisTube, the DisTube YouTube extractor, Opus, and a bundled FFmpeg binary. Spotify support is implemented directly against Spotify's Web API rather than through the older DisTube Spotify package.
 
 ## Setup
 
@@ -60,7 +60,7 @@ Copy the environment template if you do not already have a local `.env`:
 Copy-Item .env.example .env
 ```
 
-Required values:
+Required Discord values:
 
 ```env
 DISCORD_TOKEN=YOUR_BOT_TOKEN
@@ -68,14 +68,14 @@ DISCORD_CLIENT_ID=1548297625671962629
 DISCORD_GUILD_ID=911958598995808326
 ```
 
-Optional Spotify API credentials can be added for more reliable Spotify metadata access:
+To accept Spotify links, also add credentials from a Spotify Developer application:
 
 ```env
-SPOTIFY_CLIENT_ID=
-SPOTIFY_CLIENT_SECRET=
+SPOTIFY_CLIENT_ID=YOUR_SPOTIFY_CLIENT_ID
+SPOTIFY_CLIENT_SECRET=YOUR_SPOTIFY_CLIENT_SECRET
 ```
 
-If you use Spotify credentials, set both values. The plugin can also operate without them.
+Both Spotify values must be set together. Keep the client secret private.
 
 `DISCORD_GUILD_ID` is only used for fast development command registration. It does not restrict the running bot to that server.
 
