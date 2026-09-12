@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -5,11 +6,11 @@ import {
   EmbedBuilder,
   type Client
 } from "discord.js";
-import { SpotifyPlugin } from "@distube/spotify";
 import { YouTubePlugin } from "@distube/youtube";
 import { DisTube } from "distube";
-import ffmpegPath from "ffmpeg-static";
-import { config } from "../config.js";
+
+const require = createRequire(import.meta.url);
+const ffmpegPath = require("ffmpeg-static") as string;
 
 let music: DisTube | null = null;
 
@@ -29,27 +30,14 @@ function watchButton(url: string): ActionRowBuilder<ButtonBuilder> {
   );
 }
 
-function createSpotifyPlugin(): SpotifyPlugin {
-  if (config.spotifyClientId && config.spotifyClientSecret) {
-    return new SpotifyPlugin({
-      api: {
-        clientId: config.spotifyClientId,
-        clientSecret: config.spotifyClientSecret
-      }
-    });
-  }
-
-  return new SpotifyPlugin();
-}
-
 export function initializeMusic(client: Client): DisTube {
   if (music) return music;
 
   music = new DisTube(client, {
     emitNewSongOnly: true,
     savePreviousSongs: true,
-    ffmpeg: { path: ffmpegPath ?? "ffmpeg" },
-    plugins: [createSpotifyPlugin(), new YouTubePlugin()]
+    ffmpeg: { path: ffmpegPath },
+    plugins: [new YouTubePlugin()]
   });
 
   music.on("playSong", async (queue, song) => {
@@ -75,13 +63,10 @@ export function initializeMusic(client: Client): DisTube {
 
     if (song.url) {
       payload.components = [watchButton(song.url)];
-      if (isYouTubeUrl(song.url)) {
-        // Keeping the YouTube URL in message content allows Discord to render its native video preview.
-        payload.content = `🎬 ${song.url}`;
-      }
+      if (isYouTubeUrl(song.url)) payload.content = `🎬 ${song.url}`;
     }
 
-    await queue.textChannel.send(payload).catch((error) => {
+    await queue.textChannel.send(payload).catch((error: unknown) => {
       console.error("Failed to post now-playing embed", error);
     });
   });
@@ -101,7 +86,7 @@ export function initializeMusic(client: Client): DisTube {
     const count = playlist.songs.length;
     const embed = new EmbedBuilder()
       .setTitle("Playlist added")
-      .setDescription(`**${playlist.name ?? "Spotify playlist"}**\n${count} track${count === 1 ? "" : "s"} added.`);
+      .setDescription(`**${playlist.name ?? "Playlist"}**\n${count} track${count === 1 ? "" : "s"} added.`);
     if (playlist.thumbnail) embed.setThumbnail(playlist.thumbnail);
     await queue.textChannel.send({ embeds: [embed] }).catch(() => undefined);
   });
@@ -111,8 +96,7 @@ export function initializeMusic(client: Client): DisTube {
   });
 
   music.on("disconnect", (queue) => {
-    // Queue.stop() removes the queue, preserving our rule that disconnecting clears it.
-    void queue.stop().catch(() => queue.remove());
+    queue.remove();
   });
 
   music.on("error", (error, queue) => {
