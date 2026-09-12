@@ -4,7 +4,12 @@ import {
   SlashCommandBuilder,
   type GuildTextBasedChannel
 } from "discord.js";
-import { getMusic, toPlayableQuery } from "../services/music.js";
+import {
+  getMusic,
+  resolvePlayableInput,
+  resolveSearchSong,
+  resolveSearchSongs
+} from "../services/music.js";
 import { isSpotifyUrl, resolveSpotifyUrl } from "../services/spotify.js";
 import type { BotCommand } from "../types.js";
 
@@ -54,7 +59,8 @@ export const playCommand: BotCommand = {
         if (spotify.tracks.length === 1) {
           const track = spotify.tracks[0];
           if (!track) throw new Error("Spotify returned no playable track.");
-          await music.play(voiceChannel, toPlayableQuery(track.searchQuery), {
+          const song = await resolveSearchSong(track.searchQuery);
+          await music.play(voiceChannel, song, {
             member,
             textChannel,
             metadata: { ...metadata, source: "spotify", sourceUrl: track.spotifyUrl }
@@ -63,18 +69,16 @@ export const playCommand: BotCommand = {
           return;
         }
 
-        const playlist = await music.createCustomPlaylist(
-          spotify.tracks.map((track) => toPlayableQuery(track.searchQuery)),
-          {
-            member,
-            metadata: { ...metadata, source: "spotify", sourceUrl: spotify.sourceUrl },
-            name: spotify.name,
-            parallel: true,
-            source: "spotify",
-            url: spotify.sourceUrl,
-            ...(spotify.thumbnail ? { thumbnail: spotify.thumbnail } : {})
-          }
-        );
+        const songs = await resolveSearchSongs(spotify.tracks.map((track) => track.searchQuery));
+        const playlist = await music.createCustomPlaylist(songs, {
+          member,
+          metadata: { ...metadata, source: "spotify", sourceUrl: spotify.sourceUrl },
+          name: spotify.name,
+          parallel: true,
+          source: "spotify",
+          url: spotify.sourceUrl,
+          ...(spotify.thumbnail ? { thumbnail: spotify.thumbnail } : {})
+        });
 
         await music.play(voiceChannel, playlist, {
           member,
@@ -85,7 +89,8 @@ export const playCommand: BotCommand = {
         return;
       }
 
-      await music.play(voiceChannel, toPlayableQuery(query), { member, textChannel, metadata });
+      const playable = await resolvePlayableInput(query);
+      await music.play(voiceChannel, playable, { member, textChannel, metadata });
       await interaction.editReply(`🎵 Added **${query}** to the music player.`);
     } catch (error) {
       console.error("/play failed", error);
