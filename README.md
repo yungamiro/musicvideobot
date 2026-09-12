@@ -6,6 +6,8 @@ A Discord music project split into three parts:
 - **API** — Discord Activity OAuth plus shared playback state.
 - **Activity** — synchronized audio/video player embedded inside Discord.
 
+Current Discord Application / Client ID: `1548297625671962629`.
+
 The project intentionally starts with direct media URLs. A provider layer for song-name search/catalog integrations can be added next without coupling it to the Discord code.
 
 ## Architecture
@@ -27,7 +29,9 @@ Discord
     └── room playback state
 ```
 
-A room is currently identified as `<guildId>:<voiceChannelId>`. The bot writes playback state to the API and every Activity opened in that channel reads the same state. Playback uses a server timestamp so clients can correct drift.
+A room is identified as `<guildId>:<voiceChannelId>`. The bot writes playback state to the API and every Activity opened in that channel reads the same state. Playback uses a server timestamp so clients can correct drift.
+
+When the bot leaves a voice channel, is moved, or is disconnected from that channel, the old room state is deleted from the API. This is also the cleanup boundary intended for future per-room queue data.
 
 ## Requirements
 
@@ -59,24 +63,30 @@ Copy-Item .env.example .env
 3. Fill in the private `.env` file. Never commit your bot token or client secret.
 
 ```env
-DISCORD_TOKEN=...
-DISCORD_CLIENT_ID=...
-DISCORD_CLIENT_SECRET=...
-DISCORD_GUILD_ID=...
+DISCORD_TOKEN=YOUR_NEW_BOT_TOKEN
+DISCORD_CLIENT_ID=1548297625671962629
+DISCORD_CLIENT_SECRET=YOUR_NEW_APPLICATION_CLIENT_SECRET
+DISCORD_GUILD_ID=911958598995808326
 BOT_API_KEY=use-a-long-random-value-here
 API_PORT=3001
 API_BASE_URL=http://localhost:3001
 ACTIVITY_ORIGIN=http://localhost:5173
-VITE_DISCORD_CLIENT_ID=...
+VITE_DISCORD_CLIENT_ID=1548297625671962629
 VITE_API_BASE_URL=http://localhost:3001
 ```
 
-`DISCORD_CLIENT_ID` / `VITE_DISCORD_CLIENT_ID` are the Discord Application ID. `DISCORD_GUILD_ID` is your development server ID.
+`DISCORD_GUILD_ID=911958598995808326` is only the development/test guild. It is not used to restrict the running bot to one server.
 
-4. Register the development slash commands:
+4. Register slash commands in the test guild during development:
 
 ```bash
 npm run deploy:commands
+```
+
+For production/multi-server command registration, deploy the same commands globally:
+
+```bash
+npm run deploy:commands:global
 ```
 
 5. Start each service in its own terminal:
@@ -103,7 +113,8 @@ The Activity authenticates through the Embedded App SDK and the API exchanges th
 2. Launch the Activity in that channel.
 3. Run `/play` with an HTTPS audio URL and, optionally, an HTTPS video URL.
 4. Every Activity in that voice channel receives the same playback state.
-5. `/stop` clears the room.
+5. `/stop` clears the active track.
+6. Disconnecting the bot deletes the room's in-memory state.
 
 This first version does **not** scrape or download music from third-party sites. Media provider integrations belong behind a dedicated resolver layer and should use sources you are permitted to stream.
 
@@ -117,6 +128,12 @@ apps/
 packages/
   shared/     shared TypeScript contracts
 ```
+
+## Policies
+
+- [Privacy Policy](PRIVACY_POLICY.md)
+- [Terms of Service](TERMS_OF_SERVICE.md)
+- Contact: `nobumeqt@outlook.com`
 
 ## Next milestones
 
