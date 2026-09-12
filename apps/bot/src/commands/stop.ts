@@ -1,26 +1,22 @@
-import { GuildMember, MessageFlags, SlashCommandBuilder } from "discord.js";
-import { updatePlayback } from "../services/api.js";
+import { MessageFlags, SlashCommandBuilder } from "discord.js";
+import { getMusic } from "../services/music.js";
 import type { BotCommand } from "../types.js";
 
 export const stopCommand: BotCommand = {
-  data: new SlashCommandBuilder().setName("stop").setDescription("Stop Activity playback in your voice channel"),
+  data: new SlashCommandBuilder().setName("stop").setDescription("Stop playback and clear the queue"),
   async execute(interaction) {
-    if (!interaction.inCachedGuild()) {
+    if (!interaction.guildId) {
       await interaction.reply({ content: "This command only works inside a server.", flags: MessageFlags.Ephemeral });
       return;
     }
-    const member = interaction.member as GuildMember;
-    const channel = member.voice.channel;
-    if (!channel) {
-      await interaction.reply({ content: "Join a voice channel first.", flags: MessageFlags.Ephemeral });
+
+    const queue = getMusic().queues.get(interaction.guildId);
+    if (!queue) {
+      await interaction.reply({ content: "Nothing is playing right now.", flags: MessageFlags.Ephemeral });
       return;
     }
-    try {
-      await updatePlayback(`${interaction.guildId}:${channel.id}`, { status: "stopped", positionMs: 0, track: null });
-      await interaction.reply(`⏹️ Playback stopped in **${channel.name}**.`);
-    } catch (error) {
-      console.error(error);
-      await interaction.reply({ content: "The playback API is unreachable.", flags: MessageFlags.Ephemeral });
-    }
+
+    await queue.stop();
+    await interaction.reply("⏹️ Playback stopped and the queue was cleared.");
   }
 };
