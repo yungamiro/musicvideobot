@@ -5,6 +5,7 @@ import {
   type GuildTextBasedChannel
 } from "discord.js";
 import { getMusic } from "../services/music.js";
+import { isSpotifyUrl, resolveSpotifyUrl } from "../services/spotify.js";
 import type { BotCommand } from "../types.js";
 
 export const playCommand: BotCommand = {
@@ -36,18 +37,55 @@ export const playCommand: BotCommand = {
     const textChannel = interaction.channel?.isTextBased()
       ? (interaction.channel as GuildTextBasedChannel)
       : undefined;
+    const metadata = {
+      requestedById: interaction.user.id,
+      requestedByName: interaction.user.username
+    };
 
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     try {
-      await getMusic().play(voiceChannel, query, {
-        member,
-        textChannel,
-        metadata: {
-          requestedById: interaction.user.id,
-          requestedByName: interaction.user.username
+      const music = getMusic();
+
+      if (isSpotifyUrl(query)) {
+        const spotify = await resolveSpotifyUrl(query);
+        if (spotify.tracks.length === 0) throw new Error("Spotify returned no playable tracks.");
+
+        if (spotify.tracks.length === 1) {
+          const track = spotify.tracks[0];
+          if (!track) throw new Error("Spotify returned no playable track.");
+          await music.play(voiceChannel, track.searchQuery, {
+            member,
+            textChannel,
+            metadata: { ...metadata, source: "spotify", sourceUrl: track.spotifyUrl }
+          });
+          await interaction.editReply(`🎵 Added Spotify track **${track.artists.join(", ")} - ${track.title}**.`);
+          return;
         }
-      });
+
+        const playlist = await music.createCustomPlaylist(
+          spotify.tracks.map((track) => track.searchQuery),
+          {
+            member,
+            metadata: { ...metadata, source: "spotify", sourceUrl: spotify.sourceUrl },
+            name: spotify.name,
+            parallel: true,
+            source: "spotify",
+            url: spotify.sourceUrl,
+            ...(spotify.thumbnail ? { thumbnail: spotify.thumbnail } : {})
+          }
+        );
+
+        await music.play(voiceChannel, playlist, {
+          member,
+          textChannel,
+          metadata: { ...metadata, source: "spotify", sourceUrl: spotify.sourceUrl }
+        });
+        await interaction.editReply(`🎵 Added Spotify ${spotify.kind} **${spotify.name}** (${spotify.tracks.length} tracks).`);
+        return;
+      }
+
+      await music.play(voiceChannel, query, { member, textChannel, metadata });
       await interaction.editReply(`🎵 Added **${query}** to the music player.`);
     } catch (error) {
       console.error("/play failed", error);
