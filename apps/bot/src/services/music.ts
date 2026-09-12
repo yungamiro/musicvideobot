@@ -7,7 +7,7 @@ import {
   type Client
 } from "discord.js";
 import { YouTubePlugin } from "@distube/youtube";
-import { DisTube } from "distube";
+import { DisTube, Events } from "distube";
 
 const require = createRequire(import.meta.url);
 const ffmpegPath = require("ffmpeg-static") as string;
@@ -40,7 +40,7 @@ export function initializeMusic(client: Client): DisTube {
     plugins: [new YouTubePlugin()]
   });
 
-  music.on("playSong", async (queue, song) => {
+  music.on(Events.PLAY_SONG, async (queue, song) => {
     if (!queue.textChannel) return;
 
     const title = song.name ?? "Unknown track";
@@ -71,7 +71,7 @@ export function initializeMusic(client: Client): DisTube {
     });
   });
 
-  music.on("addSong", async (queue, song) => {
+  music.on(Events.ADD_SONG, async (queue, song) => {
     if (!queue.textChannel) return;
     const position = Math.max(1, queue.songs.indexOf(song));
     const embed = new EmbedBuilder()
@@ -81,7 +81,7 @@ export function initializeMusic(client: Client): DisTube {
     await queue.textChannel.send({ embeds: [embed] }).catch(() => undefined);
   });
 
-  music.on("addList", async (queue, playlist) => {
+  music.on(Events.ADD_LIST, async (queue, playlist) => {
     if (!queue.textChannel) return;
     const count = playlist.songs.length;
     const embed = new EmbedBuilder()
@@ -91,15 +91,15 @@ export function initializeMusic(client: Client): DisTube {
     await queue.textChannel.send({ embeds: [embed] }).catch(() => undefined);
   });
 
-  music.on("finish", async (queue) => {
+  music.on(Events.FINISH, async (queue) => {
     await queue.textChannel?.send("✅ Queue finished.").catch(() => undefined);
   });
 
-  music.on("disconnect", (queue) => {
+  music.on(Events.DISCONNECT, (queue) => {
     queue.remove();
   });
 
-  music.on("error", (error, queue) => {
+  music.on(Events.ERROR, (error, queue) => {
     console.error("Music playback error", error);
     void queue.textChannel?.send(`⚠️ Playback error: ${error.message}`).catch(() => undefined);
   });
