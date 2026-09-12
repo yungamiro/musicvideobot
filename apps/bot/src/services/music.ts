@@ -6,13 +6,28 @@ import {
   EmbedBuilder,
   type Client
 } from "discord.js";
-import { YouTubePlugin } from "@distube/youtube";
+import { YtDlpPlugin } from "@distube/yt-dlp";
 import { DisTube, Events } from "distube";
 
 const require = createRequire(import.meta.url);
 const ffmpegPath = require("ffmpeg-static") as string;
 
 let music: DisTube | null = null;
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+export function toPlayableQuery(value: string): string {
+  const query = value.trim();
+  if (isHttpUrl(query) || /^ytsearch\d*:/i.test(query)) return query;
+  return `ytsearch1:${query}`;
+}
 
 function isYouTubeUrl(value: string | null | undefined): value is string {
   if (!value) return false;
@@ -37,7 +52,9 @@ export function initializeMusic(client: Client): DisTube {
     emitNewSongOnly: true,
     savePreviousSongs: true,
     ffmpeg: { path: ffmpegPath },
-    plugins: [new YouTubePlugin()]
+    // yt-dlp is intentionally the only media extractor. It handles direct YouTube URLs
+    // and ytsearch queries without relying on the archived @distube/ytdl-core stack.
+    plugins: [new YtDlpPlugin({ update: true })]
   });
 
   music.on(Events.PLAY_SONG, async (queue, song) => {
