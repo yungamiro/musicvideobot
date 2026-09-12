@@ -7,7 +7,7 @@ dotenv.config({ path: resolve(import.meta.dirname, "../../../.env") });
 const schema = z.object({
   DISCORD_TOKEN: z.string().min(1),
   DISCORD_CLIENT_ID: z.string().min(1),
-  DISCORD_GUILD_ID: z.string().min(1),
+  DISCORD_GUILD_ID: z.string().min(1).optional(),
   BOT_API_KEY: z.string().min(16),
   API_BASE_URL: z.string().url().default("http://localhost:3001")
 });
