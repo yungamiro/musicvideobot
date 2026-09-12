@@ -1,133 +1,108 @@
 # MusicVideoBot
 
-A Discord music project split into three parts:
-
-- **Bot** — slash commands and voice-channel coordination.
-- **API** — Discord Activity OAuth plus shared playback state.
-- **Activity** — synchronized audio/video player embedded inside Discord.
+A standard Discord music bot that joins voice channels, searches for music, manages a per-server queue, and posts the resolved music-video link/preview in text when available.
 
 Current Discord Application / Client ID: `1548297625671962629`.
 
-The project intentionally starts with direct media URLs. A provider layer for song-name search/catalog integrations can be added next without coupling it to the Discord code.
-
-## Architecture
+## Current behavior
 
 ```text
-Discord
-├── Bot (apps/bot)
-│   ├── /ping
-│   ├── /join
-│   ├── /leave
-│   ├── /play
-│   └── /stop
-│
-├── Activity (apps/activity)
-│   └── synchronized audio/video player
-│
-└── API (apps/api)
-    ├── OAuth token exchange
-    └── room playback state
+/play query:<song name or YouTube URL>
+        ↓
+Bot joins the requester's voice channel
+        ↓
+Searches/resolves the track
+        ↓
+Plays audio in Discord voice
+        ↓
+Posts a Now Playing embed + Watch clip link in text
 ```
 
-A room is identified as `<guildId>:<voiceChannelId>`. The bot writes playback state to the API and every Activity opened in that channel reads the same state. Playback uses a server timestamp so clients can correct drift.
+When the resolved source is YouTube, the bot also keeps the YouTube URL in the Now Playing message so Discord can render its native video preview when embeds are allowed in that channel.
 
-When the bot leaves a voice channel, is moved, or is disconnected from that channel, the old room state is deleted from the API. This is also the cleanup boundary intended for future per-room queue data.
+## Commands
+
+- `/play query:<song or URL>` — search and play, or add to the queue
+- `/pause` — pause playback
+- `/resume` — resume playback
+- `/skip` — skip the current song
+- `/stop` — stop playback and erase the queue
+- `/queue` — show the current queue
+- `/nowplaying` — show the current song and Watch clip button
+- `/join` — manually join your voice channel
+- `/leave` — stop, erase the queue, and leave voice
+- `/ping` — bot latency check
+
+Queues are isolated per Discord server. Leaving/disconnecting is a queue-cleanup boundary: the bot removes the queue instead of keeping stale music state.
 
 ## Requirements
 
 - Node.js **22.12+**
 - npm
-- A Discord application with a bot
-- Activities enabled for that Discord application
+- A Discord application with a bot token
+- Discord permissions to View Channels, Send Messages, Embed Links, Connect, and Speak
+
+The playback stack uses `discord.js`, `@discordjs/voice`, DisTube, the DisTube YouTube extractor, Opus, and a bundled FFmpeg binary.
 
 ## Setup
 
-1. Clone the repository and install dependencies:
+Clone the repository and install dependencies:
 
 ```bash
 npm install
 ```
 
-2. Copy the environment template:
-
-```bash
-cp .env.example .env
-```
-
-On Windows PowerShell:
+Copy the environment template if you do not already have a local `.env`:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-3. Fill in the private `.env` file. Never commit your bot token or client secret.
+Only these values are required by the bot:
 
 ```env
-DISCORD_TOKEN=YOUR_NEW_BOT_TOKEN
+DISCORD_TOKEN=YOUR_BOT_TOKEN
 DISCORD_CLIENT_ID=1548297625671962629
-DISCORD_CLIENT_SECRET=YOUR_NEW_APPLICATION_CLIENT_SECRET
 DISCORD_GUILD_ID=911958598995808326
-BOT_API_KEY=use-a-long-random-value-here
-API_PORT=3001
-API_BASE_URL=http://localhost:3001
-ACTIVITY_ORIGIN=http://localhost:5173
-VITE_DISCORD_CLIENT_ID=1548297625671962629
-VITE_API_BASE_URL=http://localhost:3001
 ```
 
-`DISCORD_GUILD_ID=911958598995808326` is only the development/test guild. It is not used to restrict the running bot to one server.
+`DISCORD_GUILD_ID` is only used for fast development command registration. It does not restrict the running bot to that server.
 
-4. Register slash commands in the test guild during development:
+Never commit `.env` or paste the bot token into chat/issues.
+
+## Register commands
+
+For the development/test server:
 
 ```bash
 npm run deploy:commands
 ```
 
-For production/multi-server command registration, deploy the same commands globally:
+For production/multi-server registration:
 
 ```bash
 npm run deploy:commands:global
 ```
 
-5. Start each service in its own terminal:
+## Run
+
+Only the bot process is required:
 
 ```bash
-npm run dev:api
 npm run dev:bot
-npm run dev:activity
 ```
 
-## Discord Activity setup
-
-For local browser development, the Activity can run at `http://localhost:5173`. You can preview a real Discord room state with `http://localhost:5173/?room=<guildId>:<voiceChannelId>`.
-
-For testing inside Discord, expose the Activity/API through HTTPS and configure the application's **Activities > URL Mappings** in the Discord Developer Portal. Discord's Activity proxy can map `/` to the Activity host and `/api` to the API host.
-
-Any external media domains used by the player also need to be allowed through the Activity proxy/URL mappings.
-
-The Activity authenticates through the Embedded App SDK and the API exchanges the temporary OAuth code using `DISCORD_CLIENT_SECRET`. The secret never belongs in frontend code.
-
-## First playable flow
-
-1. Join a voice channel.
-2. Launch the Activity in that channel.
-3. Run `/play` with an HTTPS audio URL and, optionally, an HTTPS video URL.
-4. Every Activity in that voice channel receives the same playback state.
-5. `/stop` clears the active track.
-6. Disconnecting the bot deletes the room's in-memory state.
-
-This first version does **not** scrape or download music from third-party sites. Media provider integrations belong behind a dedicated resolver layer and should use sources you are permitted to stream.
-
-## Repository layout
+Then join a voice channel and try:
 
 ```text
-apps/
-  api/        Express API and room state
-  bot/        discord.js bot and slash commands
-  activity/   React + Vite Discord Activity
-packages/
-  shared/     shared TypeScript contracts
+/play query: The Weeknd Blinding Lights
 ```
+
+The bot should join automatically, play the resolved track in voice, and post the Now Playing/clip message in the text channel where `/play` was used.
+
+## Activity/API prototype
+
+The repository still contains the earlier `apps/activity`, `apps/api`, and shared prototype code for reference, but they are no longer part of the active music-bot runtime. You do not need Cloudflare Tunnel, Discord Activities, URL Mappings, the Activity OAuth client secret, `BOT_API_KEY`, or either local service for normal bot operation.
 
 ## Policies
 
@@ -137,10 +112,8 @@ packages/
 
 ## Next milestones
 
-- Replace direct URLs with a media resolver/provider layer.
-- Add a queue, pause/resume, seek, skip, previous, shuffle and loop.
-- Broadcast state through WebSockets for lower-latency updates.
-- Add album artwork, metadata and synchronized lyrics.
-- Add optional bot-side voice audio playback where appropriate.
-- Add persistent room/queue storage.
-- Add production deployment and CI.
+- Improve source/provider fallbacks when YouTube blocks or rate-limits a resolver.
+- Add loop, shuffle, previous, seek, and volume commands.
+- Add Spotify/Apple Music metadata resolution with audio-source fallback.
+- Improve official music-video matching instead of always using the resolved playback video.
+- Add persistent settings while keeping queues ephemeral by default.
