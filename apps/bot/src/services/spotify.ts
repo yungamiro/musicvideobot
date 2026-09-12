@@ -45,9 +45,7 @@ async function getAccessToken(): Promise<string> {
     body: new URLSearchParams({ grant_type: "client_credentials" })
   });
 
-  if (!response.ok) {
-    throw new Error(`Spotify authentication failed (${response.status}).`);
-  }
+  if (!response.ok) throw new Error(`Spotify authentication failed (${response.status}).`);
 
   const data = (await response.json()) as { access_token?: string; expires_in?: number };
   if (!data.access_token) throw new Error("Spotify authentication returned no access token.");
@@ -72,14 +70,22 @@ function parseSpotifyUrl(value: string): { kind: SpotifyResolvedCollection["kind
   try {
     const url = new URL(value);
     if (url.hostname !== "open.spotify.com") return null;
+
     const parts = url.pathname.split("/").filter(Boolean);
-    const supported = new Set(["track", "album", "playlist", "artist"]);
-    const typeIndex = parts.findIndex((part) => supported.has(part));
-    if (typeIndex < 0 || !parts[typeIndex + 1]) return null;
-    return {
-      kind: parts[typeIndex] as SpotifyResolvedCollection["kind"],
-      id: parts[typeIndex + 1]
-    };
+    const supported = new Set<SpotifyResolvedCollection["kind"]>([
+      "track",
+      "album",
+      "playlist",
+      "artist"
+    ]);
+    const typeIndex = parts.findIndex((part) => supported.has(part as SpotifyResolvedCollection["kind"]));
+    if (typeIndex < 0) return null;
+
+    const kind = parts[typeIndex];
+    const id = parts[typeIndex + 1];
+    if (!kind || !id || !supported.has(kind as SpotifyResolvedCollection["kind"])) return null;
+
+    return { kind: kind as SpotifyResolvedCollection["kind"], id };
   } catch {
     return null;
   }
@@ -129,7 +135,7 @@ async function resolveAlbum(id: string, sourceUrl: string): Promise<SpotifyResol
   const album = await spotifyGet<{
     name: string;
     images?: SpotifyImage[];
-    tracks: { items: SpotifyTrack[]; next: string | null };
+    tracks: { items: SpotifyTrack[] };
   }>(`/albums/${encodeURIComponent(id)}?market=US`);
 
   const tracks = album.tracks.items.slice(0, 100).map((track) => toResolvedTrack(track, sourceUrl));
