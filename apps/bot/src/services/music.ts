@@ -7,7 +7,7 @@ import {
   type Client
 } from "discord.js";
 import { YtDlpPlugin } from "@distube/yt-dlp";
-import { DisTube, Events } from "distube";
+import { DisTube, Events, type DisTubePlugin } from "distube";
 
 const require = createRequire(import.meta.url);
 const ffmpegPath = require("ffmpeg-static") as string;
@@ -48,13 +48,18 @@ function watchButton(url: string): ActionRowBuilder<ButtonBuilder> {
 export function initializeMusic(client: Client): DisTube {
   if (music) return music;
 
+  // @distube/yt-dlp@2.0.1 and distube@5 expose equivalent runtime plugin APIs,
+  // but their dual ESM declaration files resolve discord.js private class types
+  // through different resolution modes. Keep the compatibility cast isolated here.
+  const ytDlpPlugin = new YtDlpPlugin({ update: true }) as unknown as DisTubePlugin;
+
   music = new DisTube(client, {
     emitNewSongOnly: true,
     savePreviousSongs: true,
     ffmpeg: { path: ffmpegPath },
     // yt-dlp is intentionally the only media extractor. It handles direct YouTube URLs
     // and ytsearch queries without relying on the archived @distube/ytdl-core stack.
-    plugins: [new YtDlpPlugin({ update: true })]
+    plugins: [ytDlpPlugin]
   });
 
   music.on(Events.PLAY_SONG, async (queue, song) => {
