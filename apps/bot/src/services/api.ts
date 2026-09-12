@@ -1,7 +1,7 @@
 import type { PlaybackState, PlaybackUpdateRequest } from "@musicvideobot/shared";
 import { config } from "../config.js";
 
-function botHeaders(): HeadersInit {
+function botHeaders(): Record<string, string> {
   return { authorization: `Bearer ${config.apiKey}` };
 }
 
