@@ -5,9 +5,11 @@ import {
   EmbedBuilder,
   type Client
 } from "discord.js";
+import { SpotifyPlugin } from "@distube/spotify";
 import { YouTubePlugin } from "@distube/youtube";
 import { DisTube } from "distube";
 import ffmpegPath from "ffmpeg-static";
+import { config } from "../config.js";
 
 let music: DisTube | null = null;
 
@@ -27,6 +29,19 @@ function watchButton(url: string): ActionRowBuilder<ButtonBuilder> {
   );
 }
 
+function createSpotifyPlugin(): SpotifyPlugin {
+  if (config.spotifyClientId && config.spotifyClientSecret) {
+    return new SpotifyPlugin({
+      api: {
+        clientId: config.spotifyClientId,
+        clientSecret: config.spotifyClientSecret
+      }
+    });
+  }
+
+  return new SpotifyPlugin();
+}
+
 export function initializeMusic(client: Client): DisTube {
   if (music) return music;
 
@@ -34,7 +49,7 @@ export function initializeMusic(client: Client): DisTube {
     emitNewSongOnly: true,
     savePreviousSongs: true,
     ffmpeg: { path: ffmpegPath ?? "ffmpeg" },
-    plugins: [new YouTubePlugin()]
+    plugins: [createSpotifyPlugin(), new YouTubePlugin()]
   });
 
   music.on("playSong", async (queue, song) => {
@@ -78,6 +93,16 @@ export function initializeMusic(client: Client): DisTube {
       .setTitle("Added to queue")
       .setDescription(`**${song.name ?? "Unknown track"}**\nPosition: ${position}`);
     if (song.thumbnail) embed.setThumbnail(song.thumbnail);
+    await queue.textChannel.send({ embeds: [embed] }).catch(() => undefined);
+  });
+
+  music.on("addList", async (queue, playlist) => {
+    if (!queue.textChannel) return;
+    const count = playlist.songs.length;
+    const embed = new EmbedBuilder()
+      .setTitle("Playlist added")
+      .setDescription(`**${playlist.name ?? "Spotify playlist"}**\n${count} track${count === 1 ? "" : "s"} added.`);
+    if (playlist.thumbnail) embed.setThumbnail(playlist.thumbnail);
     await queue.textChannel.send({ embeds: [embed] }).catch(() => undefined);
   });
 
