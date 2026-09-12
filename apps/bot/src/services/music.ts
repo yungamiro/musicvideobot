@@ -7,11 +7,12 @@ import {
   type Client
 } from "discord.js";
 import { YtDlpPlugin } from "@distube/yt-dlp";
-import { DisTube, Events, type DisTubePlugin } from "distube";
+import { DisTube, Events, type DisTubePlugin, type Song } from "distube";
 
 const require = createRequire(import.meta.url);
 const ffmpegPath = require("ffmpeg-static") as string;
 
+const ytDlpSource = new YtDlpPlugin({ update: true });
 let music: DisTube | null = null;
 
 function isHttpUrl(value: string): boolean {
@@ -23,10 +24,37 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
-export function toPlayableQuery(value: string): string {
+export async function resolveSearchSong(value: string): Promise<Song> {
   const query = value.trim();
-  if (isHttpUrl(query) || /^ytsearch\d*:/i.test(query)) return query;
-  return `ytsearch1:${query}`;
+  if (!query) throw new Error("Search query is empty.");
+
+  const ytSearch = /^ytsearch\d*:/i.test(query) ? query : `ytsearch1:${query}`;
+  const resolved = await ytDlpSource.resolve(ytSearch, {});
+  const compatible = resolved as unknown as Song & { songs?: Song[] };
+
+  if (Array.isArray(compatible.songs)) {
+    const first = compatible.songs[0];
+    if (!first) throw new Error(`No YouTube result found for: ${query}`);
+    return first;
+  }
+
+  return compatible;
+}
+
+export async function resolveSearchSongs(values: string[], batchSize = 4): Promise<Song[]> {
+  const songs: Song[] = [];
+  for (let index = 0; index < values.length; index += batchSize) {
+    const batch = values.slice(index, index + batchSize);
+    const resolved = await Promise.all(batch.map((value) => resolveSearchSong(value)));
+    songs.push(...resolved);
+  }
+  return songs;
+}
+
+export async function resolvePlayableInput(value: string): Promise<string | Song> {
+  const query = value.trim();
+  if (isHttpUrl(query)) return query;
+  return resolveSearchSong(query);
 }
 
 function isYouTubeUrl(value: string | null | undefined): value is string {
@@ -51,14 +79,12 @@ export function initializeMusic(client: Client): DisTube {
   // @distube/yt-dlp@2.0.1 and distube@5 expose equivalent runtime plugin APIs,
   // but their dual ESM declaration files resolve discord.js private class types
   // through different resolution modes. Keep the compatibility cast isolated here.
-  const ytDlpPlugin = new YtDlpPlugin({ update: true }) as unknown as DisTubePlugin;
+  const ytDlpPlugin = ytDlpSource as unknown as DisTubePlugin;
 
   music = new DisTube(client, {
     emitNewSongOnly: true,
     savePreviousSongs: true,
     ffmpeg: { path: ffmpegPath },
-    // yt-dlp is intentionally the only media extractor. It handles direct YouTube URLs
-    // and ytsearch queries without relying on the archived @distube/ytdl-core stack.
     plugins: [ytDlpPlugin]
   });
 
